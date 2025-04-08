@@ -52,21 +52,6 @@ int * CreateStartMatrix(int * __restrict__ baseMatrix,const int newWord,const in
     std::memset(&nextMatrix[until+1], -1, (wordSize-until-1) * sizeof(int));
     return nextMatrix;
 }
-void flushResults(int WORD_LENGHT,fstream * stream,std::stack<int*> & ressultContainer)
-{
-    while(!ressultContainer.empty())
-    {
-        int *res=ressultContainer.top();
-        for(int i=0;i<WORD_LENGHT;i++)
-        {
-            * stream<<WordDictionary::Get(res[i])<<" ";
-        }
-        * stream<<"\n";
-        ressultContainer.pop();
-        delete[] res;
-    }
-    stream->flush();
-}
 
 void IsPalindrom(int * __restrict__ Matrix,int size)
 {
@@ -169,19 +154,30 @@ void RunParaller(const std::string& OUTPUT_PATH,const int WORD_LENGHT,const int 
         delete th;
     }
 
-    fstream * stream=new fstream (OUTPUT_PATH,fstream::out) ;
+    fstream stream= fstream (OUTPUT_PATH,fstream::out) ;
 
     std::size_t count=0;
+
     for(int i=0;i<threadCount;i++)
     {
         count+=threads_res[i].size();
-        flushResults(WORD_LENGHT,stream,threads_res[i]);
+        while(!threads_res[i].empty())
+        {
+            int *res=threads_res[i].top();
+            for(int i=0;i<WORD_LENGHT;i++)
+            {
+                stream<<WordDictionary::Get(res[i])<<" ";
+            }
+            stream<<"\n";
+            threads_res[i].pop();
+            delete[] res;
+        }
+        stream.flush();
     }
 
     std::cout <<"Number of combinations : "<<count<< "\n";
 
-    stream->close();
-    delete stream;
+    stream.close();
 }
 
 int main(int argc, char** argv)
@@ -193,6 +189,7 @@ int main(int argc, char** argv)
         ("i,inputfile", "Input file path", cxxopts::value<std::string>()->default_value("in.txt"))
         ("l,wordlenght", "Word Lenght", cxxopts::value<int>()->default_value("5"))
         ("s,sorted", "Is the dictcionary sorted", cxxopts::value<bool>()->default_value("false"))
+        ("h,help", "Print help")
         ;
     auto result = options.parse(argc, argv);
     if (result.count("help"))
