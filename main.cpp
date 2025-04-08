@@ -9,21 +9,40 @@
 #include <cxxopts.hpp>
 #include <memory>
 
+#include "exceptions.h"
 #include "radix.h"
 #include "wordnode.h"
 #include "worddictionary.h"
 
 using namespace std;
+
+bool IsValidChar(const char character)
+{
+    return 'A'<=character&&character<='Z'||'a'<=character&&character<='z';
+}
+
 void ReadFile(const int WORD_LENGHT,const string & path,std::vector<string>&AllWordsFromFile,bool sorted)
 {
     std::ifstream reader=std::ifstream (path);
+
+    if(!reader.is_open())
+        throw new sator::InvalidPathException(path);
+
     string nextLine;
+    int lineCount=0;
     while(std::getline(reader,nextLine))
     {
+        lineCount++;
+
         if(nextLine.size()!=WORD_LENGHT)
             continue;
 
-        string prev=nextLine;
+        bool isValidStr=std::all_of(nextLine.begin(), nextLine.end(), IsValidChar);
+
+        if(!isValidStr)
+        {
+            throw sator::InvalidStrException(nextLine,lineCount);
+        }
 
         std::transform(nextLine.begin(), nextLine.end(), nextLine.begin(),
                        [](char c){ return std::tolower(c); });
@@ -31,6 +50,12 @@ void ReadFile(const int WORD_LENGHT,const string & path,std::vector<string>&AllW
         AllWordsFromFile.push_back(nextLine);
     }
     reader.close();
+
+    if(AllWordsFromFile.empty())
+    {
+        throw sator::EmptyFileException(path,WORD_LENGHT);
+    }
+
     AllWordsFromFile.shrink_to_fit();
 
     if(!sorted)
@@ -61,7 +86,7 @@ void IsPalindrom(int * __restrict__ Matrix,int size)
         {
             if(WordDictionary::Get(Matrix[i])[j]!=WordDictionary::Get(Matrix[j])[i])
             {
-                throw new std::exception();
+                throw sator::GeneratedPalindromeIsInvalid(Matrix,size);
             }
         }
     }
@@ -76,10 +101,9 @@ void Scan(std::stack<int*> * ressultContainer,
 {
     if(Matrix[wordSize-1]!=-1)
     {
-#ifdef DEBUG_BUILD
+#ifdef QT_QML_DEBUG
         IsPalindrom(Matrix,wordSize);
 #endif
-
         ressultContainer->push(Matrix);
         return ;
     }
@@ -125,7 +149,14 @@ void SerchThread(const int WORD_LENGHT,std::stack<int*> *results,const WordRange
     for(int wordIndx=node.getBegin();wordIndx<node.getEnd();wordIndx++)
     {
         int * wordMatrix=CreateStartMatrix(wordIndx,WORD_LENGHT);
-        Scan(results,wordMatrix,1,WORD_LENGHT,root);
+        try
+        {
+            Scan(results,wordMatrix,1,WORD_LENGHT,root);
+        }
+        catch (std::exception & ex)
+        {
+            cout<<"Thread run into a exception : "<<ex.what();
+        }
     }
 }
 
@@ -182,7 +213,7 @@ void RunParaller(const std::string& OUTPUT_PATH,const int WORD_LENGHT,const int 
 
 int main(int argc, char** argv)
 {
-    cxxopts::Options options("MyProgram", "One line description of MyProgram");
+    cxxopts::Options options("satorrotas", "This program searches for Sator Squares in given dictionaries and outputs the resoults.");
     options.add_options()
         ("t,threadnum", "Number Of Threads", cxxopts::value<int>()->default_value("2"))
         ("o,outputfile", "Output file path", cxxopts::value<std::string>()->default_value("out.txt"))
@@ -191,33 +222,48 @@ int main(int argc, char** argv)
         ("s,sorted", "Is the dictcionary sorted", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print help")
         ;
-    auto result = options.parse(argc, argv);
-    if (result.count("help"))
+
+    try
     {
-        std::cout << options.help() << std::endl;
-        exit(0);
+        auto result = options.parse(argc, argv);
+        if (result.count("help"))
+        {
+            std::cout << options.help() << std::endl;
+            exit(0);
+        }
+
+        auto THREAD_NUM =result["t"].as<int>();
+        auto OUTPUT_PATH =result["o"].as<std::string>();
+        auto INPUT_PATH =result["i"].as<std::string>();
+        auto WORD_LENGHT =result["l"].as<int>();
+        auto SORTED =result["s"].as<bool>();
+        auto start = std::chrono::system_clock::now();
+
+        std::ios_base::sync_with_stdio(false);
+
+        std::vector<string> AllWordsFromFile = std::vector<string>();
+        ReadFile(WORD_LENGHT,INPUT_PATH,AllWordsFromFile,SORTED);
+        WordDictionary::setWords(AllWordsFromFile);
+        WordRange allWord= WordRange(0,AllWordsFromFile.size());
+        const WordNode * root=new WordNode(allWord,0,WORD_LENGHT);
+        RunParaller(OUTPUT_PATH,WORD_LENGHT,THREAD_NUM,root,WORD_LENGHT);
+
+        auto end = std::chrono::system_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cout <<"Duration : "<< elapsed.count() << "ms\n";
+
     }
-
-    auto THREAD_NUM =result["t"].as<int>();
-    auto OUTPUT_PATH =result["o"].as<std::string>();
-    auto INPUT_PATH =result["i"].as<std::string>();
-    auto WORD_LENGHT =result["l"].as<int>();
-    auto SORTED =result["s"].as<bool>();
-
-    auto start = std::chrono::system_clock::now();
-
-    std::ios_base::sync_with_stdio(false);
-
-    std::vector<string> AllWordsFromFile = std::vector<string>();
-    ReadFile(WORD_LENGHT,INPUT_PATH,AllWordsFromFile,SORTED);
-    WordDictionary::setWords(AllWordsFromFile);
-    WordRange allWord= WordRange(0,AllWordsFromFile.size());
-    const WordNode * root=new WordNode(allWord,0,WORD_LENGHT);
-    RunParaller(OUTPUT_PATH,WORD_LENGHT,THREAD_NUM,root,WORD_LENGHT);
-
-    auto end = std::chrono::system_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout <<"Duration : "<< elapsed.count() << "ms\n";
-
+    catch (const cxxopts::exceptions::exception & ex)
+    {
+        cout<<"Invalid option : "<<ex.what();
+    }
+    catch(const sator::exception & ex)
+    {
+        cout<<"Exception during execution : "<<ex.what();
+    }
+    catch(const std::exception & ex)
+    {
+        cout<<"Unhandled exception : "<<ex.what();
+    }
     return 0;
 }

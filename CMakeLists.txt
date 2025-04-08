@@ -11,6 +11,7 @@ add_executable(satorrotas main.cpp
     radix.h
     wordrange.h wordrange.cpp
     resultwriter.h resultwriter.cpp
+    exceptions.h
 )
 
 include(GNUInstallDirs)
