@@ -2,23 +2,19 @@
 #include <cstring>
 #include <iostream>
 #include <algorithm>
-#include <iostream>
-
 #include <stack>
 #include <thread>
 #include <vector>
-#include <iostream>
 #include <fstream>
-
 #include <cxxopts.hpp>
+#include <memory>
 
-#include "memory"
 #include "radix.h"
 #include "wordnode.h"
 #include "worddictionary.h"
 
 using namespace std;
-void ReadFile(const int WORD_LENGHT,const string & path,std::vector<string>&AllWordsFromFile)
+void ReadFile(const int WORD_LENGHT,const string & path,std::vector<string>&AllWordsFromFile,bool sorted)
 {
     std::ifstream reader=std::ifstream (path);
     string nextLine;
@@ -36,7 +32,9 @@ void ReadFile(const int WORD_LENGHT,const string & path,std::vector<string>&AllW
     }
     reader.close();
     AllWordsFromFile.shrink_to_fit();
-    radixSort(AllWordsFromFile);
+
+    if(!sorted)
+        radixSort(AllWordsFromFile);
 }
 
 int * CreateStartMatrix(const int startWord,const int wordSize)
@@ -65,7 +63,7 @@ void flushResults(int WORD_LENGHT,fstream * stream,std::stack<int*> & ressultCon
         }
         * stream<<"\n";
         ressultContainer.pop();
-        delete res;
+        delete[] res;
     }
     stream->flush();
 }
@@ -100,8 +98,6 @@ void Scan(std::stack<int*> * ressultContainer,
         ressultContainer->push(Matrix);
         return ;
     }
-
-    auto start = std::chrono::system_clock::now();
 
     if(indx==wordSize)
     {
@@ -156,7 +152,7 @@ void RunParaller(const std::string& OUTPUT_PATH,const int WORD_LENGHT,const int 
     int chunkSize=size/threadCount+1;
     int begin;
     int end;
-    std::mutex * io_mutex=new std::mutex();
+
     for(int i=0;i<threadCount;i++)
     {
         begin=i*chunkSize;
@@ -174,11 +170,16 @@ void RunParaller(const std::string& OUTPUT_PATH,const int WORD_LENGHT,const int 
     }
 
     fstream * stream=new fstream (OUTPUT_PATH,fstream::out) ;
-    bool open=stream->is_open();
+
+    std::size_t count=0;
     for(int i=0;i<threadCount;i++)
     {
+        count+=threads_res[i].size();
         flushResults(WORD_LENGHT,stream,threads_res[i]);
     }
+
+    std::cout <<"Number of combinations : "<<count<< "\n";
+
     stream->close();
     delete stream;
 }
@@ -206,13 +207,20 @@ int main(int argc, char** argv)
     auto WORD_LENGHT =result["l"].as<int>();
     auto SORTED =result["s"].as<bool>();
 
+    auto start = std::chrono::system_clock::now();
+
     std::ios_base::sync_with_stdio(false);
+
     std::vector<string> AllWordsFromFile = std::vector<string>();
-    ReadFile(WORD_LENGHT,INPUT_PATH,AllWordsFromFile);
+    ReadFile(WORD_LENGHT,INPUT_PATH,AllWordsFromFile,SORTED);
     WordDictionary::setWords(AllWordsFromFile);
     WordRange allWord= WordRange(0,AllWordsFromFile.size());
     const WordNode * root=new WordNode(allWord,0,WORD_LENGHT);
     RunParaller(OUTPUT_PATH,WORD_LENGHT,THREAD_NUM,root,WORD_LENGHT);
+
+    auto end = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout <<"Duration : "<< elapsed.count() << "ms\n";
 
     return 0;
 }

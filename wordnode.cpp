@@ -1,7 +1,6 @@
 #include "wordnode.h"
 #include "worddictionary.h"
 #include <climits>
-#include <iostream>
 
 WordNode::WordNode( WordRange myRange, const int depth,const int leafLevel):depth(depth),myRange(myRange)
 {
