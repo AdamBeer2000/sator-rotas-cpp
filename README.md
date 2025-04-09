@@ -23,6 +23,6 @@ Example:
 <li>And the dictionary is sorted.</li>
 </ul>
 
-``sh
+```sh
 ./satorrotas -i ./latin.txt -o ./results.txt -l 7 -t 10 -s true
-``
+```
