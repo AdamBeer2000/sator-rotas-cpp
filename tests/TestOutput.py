@@ -2,6 +2,9 @@
 import subprocess
 import os
 import shutil
+import unittest
+import sys
+from parameterized import parameterized
 
 def BuildRelease():
     print("Build project start")
@@ -22,42 +25,29 @@ def IsPalindrom(matrix):
                 return False
     return True
 
-#Check : is all of the results really complies with the constraints
-def TestResult(path):
-    allValid=True
-    print(allValid)
-    try:
-        with open(path, 'r') as file:
-            for line in file:
-                rotasSquare=line.strip()
-                wordsMatrix=rotasSquare.split(" ")
-                if(IsPalindrom(wordsMatrix) is False):
-                    allValid=False
-                    print("Invalid matrix : ",wordsMatrix)
-                    break
-    except:
-        return False
-    return allValid
+
+def GenerateTestCases():
+    TestCases=[]
+    for word_lenght in range(2, 18): 
+        for thread_num in range(1, 12): 
+            TestCases.append((word_lenght,thread_num))
+    return TestCases
+
+class TestOutputValidity(unittest.TestCase):
+    def get_path(self,word_lenght,thread_num):
+        return f"./results_tmp/result_{word_lenght}_{thread_num}.txt"
+
+    @parameterized.expand(GenerateTestCases())  
+    def test_n_lenght_m_thread(self,word_lenght,thread_num):
+        print(f"Runing test for {word_lenght} word lenght with {thread_num} no. of threads")
+        path=self.get_path(word_lenght,thread_num)
+        RunSator("./dictionaries/latin.txt",path,word_lenght,thread_num)
+        self.assertTrue(TestResult(path))
 
 def CleanUp():
     shutil.rmtree("results_tmp")
 
-BuildRelease()
-
-if(os.path.exists("results_tmp")):
-    shutil.rmtree("results_tmp")
-os.mkdir("results_tmp")   
-
-for word_lenght in range(2, 18): 
-    for thread_num in range(1, 12): 
-        print(f"Wrod Lenght: {word_lenght} Number of threads : {thread_num}")
-        result=f"./results_tmp/result_{word_lenght}_{thread_num}.txt"
-        RunSator("./dictionaries/latin.txt",result,word_lenght,thread_num)
-        isValid=TestResult(result)
-        if(isValid is False):
-            CleanUp()
-            return
-
-print("All test passed")
-
-CleanUp()
+if __name__ == '__main__':
+    BuildRelease()
+    unittest.main()
+    CleanUp()
