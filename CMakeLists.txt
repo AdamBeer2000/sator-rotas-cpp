@@ -10,7 +10,6 @@ add_executable(satorrotas main.cpp
     worddictionary.h worddictionary.cpp
     radix.h
     wordrange.h wordrange.cpp
-    resultwriter.h resultwriter.cpp
     exceptions.h
 )
 
