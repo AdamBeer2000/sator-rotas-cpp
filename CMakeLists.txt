@@ -15,7 +15,7 @@ add_executable(satorrotas main.cpp
 
 include(GNUInstallDirs)
 
-find_package(cxxopts REQUIRED)
+add_subdirectory(lib/cxxopts)
 
 install(TARGETS satorrotas
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
