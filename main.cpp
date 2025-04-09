@@ -26,28 +26,41 @@ void ReadFile(const int WORD_LENGHT,const string & path,std::vector<string>&AllW
     std::ifstream reader=std::ifstream (path);
 
     if(!reader.is_open())
-        throw new sator::InvalidPathException(path);
+        throw sator::InvalidPathException(path);
 
     string nextLine;
     int lineCount=0;
     while(std::getline(reader,nextLine))
     {
-        lineCount++;
-
-        if(nextLine.size()!=WORD_LENGHT)
-            continue;
-
-        bool isValidStr=std::all_of(nextLine.begin(), nextLine.end(), IsValidChar);
-
-        if(!isValidStr)
+        try
         {
-            throw sator::InvalidStrException(nextLine,lineCount);
+            lineCount++;
+
+            if(nextLine.size()!=WORD_LENGHT)
+                continue;
+
+            bool isValidStr=std::all_of(nextLine.begin(), nextLine.end(), IsValidChar);
+
+            if(!isValidStr)
+            {
+                throw sator::InvalidStrException(nextLine,lineCount);
+            }
+
+            std::transform(nextLine.begin(), nextLine.end(), nextLine.begin(),
+                           [](char c){ return std::tolower(c); });
+
+            AllWordsFromFile.push_back(nextLine);
+        }
+        catch(const sator::exception & ex)
+        {
+            cout<<ex.what()<<std::endl;
+        }
+        catch(const std::exception & ex)
+        {
+            cout<<"Unhandled exception : "<<ex.what();
+            throw;
         }
 
-        std::transform(nextLine.begin(), nextLine.end(), nextLine.begin(),
-                       [](char c){ return std::tolower(c); });
-
-        AllWordsFromFile.push_back(nextLine);
     }
     reader.close();
 
@@ -78,20 +91,6 @@ int * CreateStartMatrix(int * __restrict__ baseMatrix,const int newWord,const in
     return nextMatrix;
 }
 
-void IsPalindrom(int * __restrict__ Matrix,int size)
-{
-    for(int i=0;i<size;i++)
-    {
-        for(int j=0;j<size;j++)
-        {
-            if(WordDictionary::Get(Matrix[i])[j]!=WordDictionary::Get(Matrix[j])[i])
-            {
-                throw sator::GeneratedPalindromeIsInvalid(Matrix,size);
-            }
-        }
-    }
-}
-
 void Scan(std::stack<int*> * ressultContainer,
           int * Matrix,
           const int indx,
@@ -101,9 +100,6 @@ void Scan(std::stack<int*> * ressultContainer,
 {
     if(Matrix[wordSize-1]!=-1)
     {
-#ifdef QT_QML_DEBUG
-        IsPalindrom(Matrix,wordSize);
-#endif
         ressultContainer->push(Matrix);
         return ;
     }
