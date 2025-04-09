@@ -25,7 +25,6 @@ def IsPalindrom(matrix):
                 return False
     return True
 
-
 def GenerateTestCases():
     TestCases=[]
     for word_lenght in range(2, 18): 
@@ -35,14 +34,33 @@ def GenerateTestCases():
 
 class TestOutputValidity(unittest.TestCase):
     def get_path(self,word_lenght,thread_num):
-        return f"./results_tmp/result_{word_lenght}_{thread_num}.txt"
-
+            return f"./results_tmp/result_{word_lenght}_{thread_num}.txt"
+    def setUp(self):
+        os.mkdir("./results_tmp")  
+    def tearDown(self):
+        shutil.rmtree("./results_tmp")
     @parameterized.expand(GenerateTestCases())  
     def test_n_lenght_m_thread(self,word_lenght,thread_num):
         print(f"Runing test for {word_lenght} word lenght with {thread_num} no. of threads")
         path=self.get_path(word_lenght,thread_num)
         RunSator("./dictionaries/latin.txt",path,word_lenght,thread_num)
         self.assertTrue(TestResult(path))
+
+#Check : is all of the results really complies with the constraints
+def TestResult(path):
+    allValid=True
+    try:
+        with open(path, 'r') as file:
+            for line in file:
+                rotasSquare=line.strip()
+                wordsMatrix=rotasSquare.split(" ")
+                if(IsPalindrom(wordsMatrix) is False):
+                    allValid=False
+                    print("Invalid matrix : ",wordsMatrix)
+                    break
+    except:
+        return False
+    return allValid
 
 def CleanUp():
     shutil.rmtree("results_tmp")
