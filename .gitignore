@@ -33,3 +33,5 @@
 
 #build folder
 build/
+tests/build/
+tests/results_tmp
