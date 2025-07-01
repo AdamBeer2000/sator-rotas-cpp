@@ -6,9 +6,9 @@
 #include <thread>
 #include <vector>
 #include <fstream>
-#include <cxxopts.hpp>
 #include <memory>
 
+#include "lib/cxxopts/include/cxxopts.hpp"
 #include "exceptions.h"
 #include "radix.h"
 #include "wordnode.h"
